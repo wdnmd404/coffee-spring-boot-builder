@@ -1,41 +1,111 @@
 buildscript {
+    ext {
+        SPRING_BOOT_VERSION = "2.2.1.RELEASE"
+        SPRING_VERSION = "5.2.1.RELEASE"
+        COFFEE_VERSION = "0.2.0-release"
+    }
     repositories {
         mavenLocal()
         maven {
             url 'https://maven.aliyun.com/nexus/content/repositories/central'
         }
     }
+}
+
+plugins {
+    id 'idea'
 }
 allprojects {
     group = 'site.zido'
-    version = '0.2.0-release'
+    version = COFFEE_VERSION
 }
 
-ext["SPRING_BOOT_VERSION"] = "2.2.1.RELEASE"
-
 configure(subprojects.findAll{!it.path.startsWith(":examples")}) {
-    repositories {
-        mavenLocal()
-        maven {
-            url 'https://maven.aliyun.com/nexus/content/repositories/central'
-        }
-    }
     apply plugin: 'java-library'
     apply plugin: 'maven-publish'
+    apply plugin: 'signing'
 
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
-
     tasks.withType(JavaCompile) {
         options.encoding = 'UTF-8'
+    }
+    repositories {
+        mavenLocal()
+        maven { url "https://maven.aliyun.com/repository/public" }
+        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+        jcenter()
+    }
+
+    task sourceJar(type: Jar) {
+        from sourceSets.main.allJava
+        archiveClassifier.set("sources")
+    }
+
+    task javadocJar(type: Jar) {
+        from javadoc
+        archiveClassifier.set("javadoc")
     }
 
     publishing {
         publications {
-            maven(MavenPublication) {
-                from(components.java)
+            mavenJava(MavenPublication) {
+                groupId = project.group
+                artifactId = project.name
+                version = project.version
+                from components.java
+                pom {
+                    licenses {
+                        license {
+                            name = 'The MIT License (MIT)'
+                            url = 'https://github.com/zidoshare/coffee-spring-boot-builder/blob/master/LICENSE'
+                        }
+                    }
+                    developers {
+                        developer {
+                            name = 'zido'
+                            email = 'wuhongxu1208@gmail.com'
+                        }
+                    }
+                    scm {
+                        url = 'https://github.com/zidoshare/coffee-spring-boot-builder'
+                        connection = 'scm:git:git://github.com/zidoshare/coffee-spring-boot-builder.git'
+                        developerConnection = 'scm:git:ssh://git@github.com:zidoshare/coffee-spring-boot-builder.git'
+                    }
+                }
             }
         }
+        repositories {
+            maven {
+                name "oss"
+                def releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+                def snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots"
+                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                credentials {
+                    username sonatypeUsername
+                    password sonatypePassword
+                }
+            }
+        }
+    }
+
+    signing {
+        sign publishing.publications.mavenJava
+    }
+
+    javadoc {
+        description = "Generates project-level javadoc for use in -javadoc jar"
+
+        options.memberLevel = JavadocMemberLevel.PROTECTED
+        options.author = true
+        options.version = true
+        options.header = project.name
+        options.addStringOption('Xdoclint:none', '-quiet')
+
+        logging.captureStandardError LogLevel.INFO
+        logging.captureStandardOutput LogLevel.INFO
+        options.encoding = "UTF-8"
+        options.charSet = 'UTF-8'
     }
 }
 subprojects {
@@ -46,3 +116,4 @@ subprojects {
         }
     }
 }
+description = "Coffee Spring Builder Project"
